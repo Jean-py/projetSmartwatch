@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Projet</string>
+    <string name="QuestionOk">Are you OK?</string>
+    <string name="PilotMode">Piloting</string>
+
+    <string name="RestMode">Resting</string>
+</resources>
