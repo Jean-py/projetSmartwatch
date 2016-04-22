@@ -1,7 +1,7 @@
 package s8.projet;
 
 import android.graphics.Color;
-import android.net.Uri;
+
 import android.os.Bundle;
 import android.support.v4.view.MotionEventCompat;
 import android.support.wearable.activity.WearableActivity;
@@ -11,9 +11,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-
-import com.google.android.gms.common.api.GoogleApiClient;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -29,17 +26,19 @@ public class MainActivity extends WearableActivity {
     private Button buttonYes;
     private Button buttonNo;
     private TextView areUOk;
-    private Button buttonTapingGesture1;
-    private Button buttonTapingGesture2;
+    private Button buttonTappingGesture;
 
-    private boolean finger1 = false;
-    private boolean finger2 = false;
-    private boolean fingerOnBeat = false;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    private GoogleApiClient client;
+
+    int xPosFinger1, yPosFinger1, xPosFinger2, yPosFinger2 = 0;
+    int xButton;
+    int yButton;
+    Etat state;
+
+    public enum Etat {
+        INIT,FINGER1,FINGER2,TAPPING;
+    }
+
+
 
 
     @Override
@@ -54,34 +53,43 @@ public class MainActivity extends WearableActivity {
         buttonYes = (Button) findViewById(R.id.buttonYes);
         buttonNo = (Button) findViewById(R.id.buttonNo);
         areUOk = (TextView) findViewById(R.id.areUOK);
-        buttonTapingGesture1 = (Button) findViewById(R.id.buttonTapping1);
-        buttonTapingGesture2 = (Button) findViewById(R.id.buttonTapping2);
+        buttonTappingGesture = (Button)findViewById(R.id.buttonTaping);
 
+        xButton = (int) buttonTappingGesture.getX();
+        yButton = (int) buttonTappingGesture.getY();
+        state = Etat.INIT;
 
-        //listener Bouton tappingGesture
-        buttonTapingGesture1.setOnTouchListener(new View.OnTouchListener() {
+        buttonTappingGesture.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                callBackTapping1();
-                return false;
+                switch ( event.getAction() & MotionEvent.ACTION_MASK){
+
+                    case (MotionEvent.ACTION_UP) :
+                        callBackActionUp(event);
+                        break;
+                    case (MotionEvent.ACTION_POINTER_DOWN) :
+                        if(stayOnTheButtonTappingGesture(event, 2)){
+                            callBackActionPointerDown(event);
+                        }
+
+                        break;
+                    case (MotionEvent.ACTION_POINTER_UP) :
+                        callBackActionActionPointerUp(event);
+                        break;
+
+                    case (MotionEvent.ACTION_DOWN) :
+                        callbackButtonActionDown(event);
+                        break;
+
+                }
+                return true;
             }
-
         });
-        buttonTapingGesture2.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                callBackTapping1();
-                return false;
-            }
-
-        });
-
 
         //listener bouton No
         buttonNo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 callbackButtonNo();
             }
         });
@@ -94,6 +102,8 @@ public class MainActivity extends WearableActivity {
             }
         });
     }
+
+
 
     @Override
     public void onEnterAmbient(Bundle ambientDetails) {
@@ -127,56 +137,166 @@ public class MainActivity extends WearableActivity {
     }
 
 
+    public boolean stayOnTheButtonTappingGesture(MotionEvent event,int numberOfPointer ){
+
+        boolean res = true;
+        for( int i = 0 ; i < numberOfPointer ; i++) {
+            System.out.println(" getX("+i+") : " + event.getX(i) + "   buttonTappingGesture.getX() : " +  buttonTappingGesture.getX() );
+            System.out.println(" getY("+i+") : " + event.getY(i) + "   buttonTappingGesture.getY() : " +  buttonTappingGesture.getY() );
+            res = res &&  event.getX(i) > buttonTappingGesture.getX()-100 ;
+
+
+        }
+        return res;
+    }
+
     public void callbackButtonNo() {
         areUOk.setText("No");
         areUOk.setBackgroundColor(Color.BLUE);
+        showButton();
     }
 
     public void callbackButtonYes() {
         areUOk.setText("yes");
         areUOk.setBackgroundColor(Color.RED);
+        showButton();
     }
 
-    public void callBackTapping1() {
-        finger1 = true;
-        if (finger2) {
-            buttonNo.setVisibility(View.VISIBLE);
-            buttonYes.setVisibility(View.VISIBLE);
+
+    //premier doigt sur l'écran
+    public void callbackButtonActionDown(MotionEvent event) {
+
+        System.out.println("Action Down");
+        switch (state) {
+            case INIT:
+                state = Etat.FINGER1;
+                break;
+            case FINGER1:
+                //impossible
+                break;
+            case FINGER2: //impossible
+                break;
+            case TAPPING://impossible
+                break;
         }
-        Log.d("click on taping", "taping");
     }
-
-    public void callBackTapping2() {
-        finger2 = true;
-        if (finger1) {
-            buttonNo.setVisibility(View.VISIBLE);
-            buttonYes.setVisibility(View.VISIBLE);
+    //second doigt sur l'écran
+    private void callBackActionPointerDown(MotionEvent event){
+        System.out.println("Action pointer down");
+        switch (state) {
+            case INIT:
+                break;
+            case FINGER1:
+                state = Etat.FINGER2;
+                showButton();
+                break;
+            case FINGER2:
+                //nothing
+                break;
+            case TAPPING:
+                state = Etat.FINGER2;
+                showButton();
+                break;
         }
-
-        Log.d("click on taping", "taping");
     }
+
+    //premier doigt enlevé
+    private  void callBackActionUp(MotionEvent event){
+        System.out.println("Action up");
+        switch (state){
+            case INIT:
+                //impossible
+                break;
+            case FINGER1:
+                state = Etat.INIT;
+                hideButton();
+                break;
+            case FINGER2:
+
+                //TODO a voir: passe t'on en init ou rien du tout?
+                state = Etat.INIT;
+                hideButton();
+                break;
+            case TAPPING:
+                state = Etat.INIT;
+                hideButton();
+                break;
+        }
+    }
+
+    //on enleve le second doigt
+    private  void callBackActionActionPointerUp(MotionEvent event){
+        System.out.println("action Pointer up");
+        switch (state){
+            case INIT: //impossible
+                break;
+            case FINGER1: //impossible
+                break;
+            case FINGER2:
+                state = Etat.TAPPING;
+                showButton();
+                break;
+            case TAPPING: // impossible
+                break;
+        }
+    }
+
+    public void showButton(){
+        buttonNo.setVisibility(View.VISIBLE);
+        buttonYes.setVisibility(View.VISIBLE);
+    }
+
+    public void hideButton(){
+        buttonNo.setVisibility(View.INVISIBLE);
+        buttonYes.setVisibility(View.INVISIBLE);
+    }
+
 
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        int xPos, yPos;
+
         int index = MotionEventCompat.getActionIndex(event);
 
-        if (event.getPointerCount() > 1) {
-            //Log.d("MainActivity", "Multitouch event");
-            finger2 = finger1 = true;
-            // The coordinates of the current screen contact, relative to
-            // the responding View or Activity.
-            xPos = (int) MotionEventCompat.getX(event, index);
-            yPos = (int) MotionEventCompat.getY(event, index);
 
-        } else {
+
+        if (MotionEventCompat.getPointerCount(event) == 1) {
             // Single touch event
-            //Log.d("MainActivity", "Single touch event");
-            xPos = (int) MotionEventCompat.getX(event, index);
-            yPos = (int) MotionEventCompat.getY(event, index);
-            finger1 = true;
+            xPosFinger1 = (int) MotionEventCompat.getX(event, 0);
+            yPosFinger1 = (int) MotionEventCompat.getY(event, 0);
+            // Log.d("MainActivity", "Single touch event   x1 : " + xPosFinger1 +  "  y1 : " + yPosFinger1+
+
+        }else if (event.getPointerCount() > 1) {
+           /* if(MotionEventCompat.getX(event,0) >= buttonTappingGesture.getX()  && MotionEventCompat.getX(event,1) >= buttonTappingGesture.getX() ) {
+                finger2 =true;
+                finger1 = true;
+                doubleTouchHappend = true;
+                // The coordinates of the current screen contact, relative to
+                // the responding View or Activity.
+                xPosFinger1 = (int) MotionEventCompat.getX(event, 0);
+                yPosFinger1 = (int) MotionEventCompat.getY(event, 0);
+                xPosFinger2 = (int) MotionEventCompat.getX(event, 1);
+                yPosFinger2 = (int) MotionEventCompat.getY(event, 1);
+                // Log.d("MainActivity", "Single touch event   x1 : " + xPosFinger1 +  "  y1 : " + yPosFinger1+
+                // "  x2 : " + xPosFinger2 +  "  y2 : " + yPosFinger2);
+
+                Log.d("premier if","1"+ "// finger1 : "+ finger1 + "  finger2 : " + finger2 + "  doubleTouchHappend : " + doubleTouchHappend);
+            }*/
+        }
+
+        //checker les action UP
+        if( MotionEventCompat.findPointerIndex(event, 0) == -1){
+            /*
+            finger1=false;
             finger2 = false;
+            doubleTouchHappend = false;
+            buttonNo.setVisibility(View.INVISIBLE);
+            buttonYes.setVisibility(View.INVISIBLE);
+
+            Log.d("dernier if", "4"+ "// finger1 : "+ finger1 + "  finger2 : " + finger2 + "  doubleTouchHappend : " + doubleTouchHappend);
+            //buttonNo.setVisibility(View.INVISIBLE);
+            //buttonYes.setVisibility(View.INVISIBLE);
+            */
         }
         return super.dispatchTouchEvent(event);
     }
